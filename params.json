@@ -1,0 +1,7 @@
+
+{
+  "tokenizer": {
+    "lowercase": true,
+    "strategy": "first_word"
+  }
+}
