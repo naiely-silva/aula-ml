@@ -1,0 +1,12 @@
+
+{
+  "dataset_id": "chamados-v1",
+  "origem": "Dados sinteticos criados para atividade pratica",
+  "schema": {
+    "id": "Identificador unico do chamado",
+    "descricao": "Descricao textual do chamado",
+    "classe": "Categoria do chamado: comum ou urgente"
+  },
+  "regra_rotulagem": "Chamados que impedem acesso ou comprometem servicos essenciais devem ser classificados como urgentes.",
+  "observacao": "O chamado 006 foi mantido intencionalmente com rotulo incorreto para permitir avaliar o impacto de uma correcao."
+}
