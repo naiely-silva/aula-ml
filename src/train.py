@@ -1,183 +1,111 @@
-
 import csv
-import json
 import hashlib
+import json
 import platform
+import subprocess
 import sys
 import uuid
-import subprocess
+from collections import Counter, defaultdict
 from pathlib import Path
-from collections import Counter
-from datetime import datetime, timezone
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
-def sha256_file(path):
-    """Calcula o hash SHA256 de um arquivo."""
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+def ler_csv(caminho):
+    with Path(caminho).open(encoding="utf-8", newline="") as arquivo:
+        return list(csv.DictReader(arquivo))
 
 
-def read_csv(path):
-    """Lê um arquivo CSV e retorna uma lista de dicionários."""
-    with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def main():
-    if len(sys.argv) < 2:
-        raise SystemExit("Uso: python src/train.py <run_id>")
-
-    run_id = sys.argv[1]
-
-    # Lê os parâmetros do projeto.
-    with open(ROOT / "params.json", encoding="utf-8") as f:
-        params = json.load(f)
-
-    lowercase = params["tokenizer"]["lowercase"]
-    strategy = params["tokenizer"]["strategy"]
-
-    # Lê os dados e a divisão treino/teste.
-    chamados = read_csv(ROOT / "data" / "chamados.csv")
-    split = read_csv(ROOT / "data" / "split.csv")
-
-    particoes = {row["id"]: row["particao"] for row in split}
-
-    treino = [row for row in chamados if particoes[row["id"]] == "train"]
-    teste = [row for row in chamados if particoes[row["id"]] == "test"]
-
-    if not treino or not teste:
-        raise ValueError("Treino ou teste vazio.")
-
-    # Aprende a classe mais frequente para cada primeira palavra.
-    palavras = {}
-    todas_classes = Counter(row["classe"] for row in treino)
-
-    for row in treino:
-        texto = row["descricao"]
-        if lowercase:
-            texto = texto.lower()
-
-        if strategy == "first_word":
-            palavra = texto.split()[0]
-        else:
-            raise ValueError("Estrategia de tokenizacao desconhecida.")
-
-        palavras.setdefault(palavra, Counter())
-        palavras[palavra][row["classe"]] += 1
-
-    # Treina o classificador.
-    modelo = {
-        palavra: contador.most_common(1)[0][0]
-        for palavra, contador in palavras.items()
-    }
-
-    classe_padrao = todas_classes.most_common(1)[0][0]
-
-    def prever(descricao):
-        texto = descricao.lower() if lowercase else descricao
-        palavra = texto.split()[0]
-        return modelo.get(palavra, classe_padrao)
-
-    # Avalia o modelo nos dados de teste.
-    corretos = 0
-    resultados = []
-
-    for row in teste:
-        previsto = prever(row["descricao"])
-        real = row["classe"]
-
-        if previsto == real:
-            corretos += 1
-
-        resultados.append({
-            "id": row["id"],
-            "real": real,
-            "previsto": previsto,
-            "correto": previsto == real
-        })
-
-    acuracia = corretos / len(teste)
-
-    # Calcula recall para a classe urgente.
-    verdadeiros_positivos = sum(
-        1 for r in resultados
-        if r["real"] == "urgente" and r["previsto"] == "urgente"
+def salvar_json(caminho, conteudo):
+    Path(caminho).write_text(
+        json.dumps(conteudo, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
 
-    falsos_negativos = sum(
-        1 for r in resultados
-        if r["real"] == "urgente" and r["previsto"] != "urgente"
-    )
 
-    total_urgentes = verdadeiros_positivos + falsos_negativos
-    recall_urgente = (
-        verdadeiros_positivos / total_urgentes
-        if total_urgentes else 0
-    )
-
-    # Salva o modelo.
-    (ROOT / "models").mkdir(exist_ok=True)
-    with open(ROOT / "models" / "model.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "palavras": modelo,
-            "classe_padrao": classe_padrao,
-            "params": params
-        }, f, indent=2, ensure_ascii=False)
-
-    # Salva as métricas.
-    (ROOT / "reports").mkdir(exist_ok=True)
-    metrics = {
-        "run_id": run_id,
-        "acuracia": acuracia,
-        "recall_urgente": recall_urgente,
-        "total_teste": len(teste),
-        "resultados": resultados
-    }
-
-    with open(ROOT / "reports" / "metrics.json", "w", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2, ensure_ascii=False)
-
-    # Identifica a versão do Git.
-    commit = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"],
-        cwd=ROOT,
-        text=True
-    ).strip()
-
-    # Identifica os dados utilizados.
-    dataset_id = json.loads(
-        (ROOT / "data" / "manifesto.json").read_text(encoding="utf-8")
-    )["dataset_id"]
-
-    # Cria o manifesto do modelo.
-    model_path = ROOT / "models" / "model.json"
-    metrics_path = ROOT / "reports" / "metrics.json"
-
-    manifesto_modelo = {
-        "run_id": run_id,
-        "dataset_id": dataset_id,
-        "git_commit": commit,
-        "data_utc": datetime.now(timezone.utc).isoformat(),
-        "python": sys.version,
-        "platform": platform.platform(),
-        "sha256_modelo": sha256_file(model_path),
-        "sha256_metricas": sha256_file(metrics_path)
-    }
-
-    with open(ROOT / "reports" / "modelo.json", "w", encoding="utf-8") as f:
-        json.dump(manifesto_modelo, f, indent=2, ensure_ascii=False)
-
-    print("Treinamento concluido!")
-    print(f"Run ID: {run_id}")
-    print(f"Dataset: {dataset_id}")
-    print(f"Acuracia: {acuracia:.2%}")
-    print(f"Recall urgente: {recall_urgente:.2%}")
+def sha256(caminho):
+    return hashlib.sha256(Path(caminho).read_bytes()).hexdigest()
 
 
-if __name__ == "__main__":
-    main()
+def token(texto):
+    return texto.lower().split()[0]
+
+
+def classe_majoritaria(contagens):
+    return min(contagens, key=lambda classe: (-contagens[classe], classe))
+
+
+model_id = sys.argv[1]
+dataset = json.loads(Path("data/manifesto.json").read_text(encoding="utf-8"))
+params = json.loads(Path("params.json").read_text(encoding="utf-8"))
+if params != {"tokenizador": "primeira_palavra_minuscula"}:
+    raise ValueError("Configuração de tokenização desconhecida.")
+
+linhas = ler_csv("data/chamados.csv")
+divisao = ler_csv("data/split.csv")
+particoes = {linha["id"]: linha["particao"] for linha in divisao}
+classes = ("comum", "urgente")
+ids = {linha["id"] for linha in linhas}
+if len(ids) != len(linhas) or len(particoes) != len(divisao) or ids != set(particoes):
+    raise ValueError("IDs duplicados ou divergentes entre dataset e partição.")
+if set(particoes.values()) != {"treino", "teste"}:
+    raise ValueError("A partição deve conter treino e teste.")
+if any(not linha["texto"].strip() or linha["classe"] not in classes for linha in linhas):
+    raise ValueError("Há texto vazio ou classe inválida.")
+
+treino = [linha for linha in linhas if particoes[linha["id"]] == "treino"]
+teste = [linha for linha in linhas if particoes[linha["id"]] == "teste"]
+if any({linha["classe"] for linha in grupo} != set(classes) for grupo in (treino, teste)):
+    raise ValueError("As duas classes devem aparecer no treino e no teste.")
+
+contagens = defaultdict(Counter)
+for linha in treino:
+    contagens[token(linha["texto"])][linha["classe"]] += 1
+
+modelo = {
+    "parametros": params,
+    "entrada": "texto de chamado",
+    "saida": list(classes),
+    "classe_por_token": {palavra: classe_majoritaria(n) for palavra, n in contagens.items()},
+    "classe_padrao": classe_majoritaria(Counter(linha["classe"] for linha in treino)),
+}
+Path("models").mkdir(exist_ok=True)
+Path("reports").mkdir(exist_ok=True)
+artefato = "models/model.json"
+salvar_json(artefato, modelo)
+
+suporte = Counter(linha["classe"] for linha in teste)
+acertos = Counter()
+for linha in teste:
+    prevista = modelo["classe_por_token"].get(token(linha["texto"]), modelo["classe_padrao"])
+    if prevista == linha["classe"]:
+        acertos[linha["classe"]] += 1
+
+avaliacao = "reports/metrics.json"
+salvar_json(avaliacao, {
+    "model_id": model_id,
+    "dataset_id": dataset["dataset_id"],
+    "protocolo": "Avaliação em partição de teste fixa",
+    "split_sha256": sha256("data/split.csv"),
+    "acuracia": sum(acertos.values()) / len(teste),
+    "por_classe": {
+        classe: {"recall": acertos[classe] / suporte[classe], "suporte": suporte[classe]}
+        for classe in classes
+    },
+})
+salvar_json("reports/modelo.json", {
+    "model_id": model_id,
+    "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+    "dataset_id": dataset["dataset_id"],
+    "dataset_sha256": sha256("data/chamados.csv"),
+    "split_sha256": sha256("data/split.csv"),
+    "run_id": str(uuid.uuid4()),
+    "parametros": params,
+    "ambiente": {
+        "python": platform.python_version(),
+        "plataforma": platform.platform(),
+        "dependencias_externas": [],
+    },
+    "artefato": artefato,
+    "descritor": artefato + ".dvc",
+    "artifact_sha256": sha256(artefato),
+    "avaliacao": avaliacao,
+})
