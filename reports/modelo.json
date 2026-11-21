@@ -1,0 +1,20 @@
+{
+  "ambiente": {
+    "dependencias_externas": [],
+    "plataforma": "Windows-11-10.0.26300-SP0",
+    "python": "3.14.4"
+  },
+  "artefato": "models/model.json",
+  "artifact_sha256": "72a3a67936139a3473838a6dcfa7aae1acb4c23467be1ef1056d51d485b94840",
+  "avaliacao": "reports/metrics.json",
+  "dataset_id": "chamados-v1",
+  "dataset_sha256": "bc3fd86a3a5f598841a58839a9726d901fa7e8361ffe79c5b43873ad8a1328ac",
+  "descritor": "models/model.json.dvc",
+  "git_commit": "8e6a9aa5e23eab3baebd7f36087103fe27e689ea",
+  "model_id": "chamados-r1",
+  "parametros": {
+    "tokenizador": "primeira_palavra_minuscula"
+  },
+  "run_id": "49ae9a39-7373-4d2d-8dfc-e5797a4aae18",
+  "split_sha256": "d5007d67b4b969f16e268c00c6c1fc90ee452d1b5646410be6ae0c229c4d43dd"
+}
