@@ -1,7 +1,2 @@
+{"tokenizador": "primeira_palavra_minuscula"}
 
-{
-  "tokenizer": {
-    "lowercase": true,
-    "strategy": "first_word"
-  }
-}

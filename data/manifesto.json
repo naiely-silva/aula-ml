@@ -1,12 +1,12 @@
-
 {
-  "dataset_id": "chamados-v1",
-  "origem": "Dados sinteticos criados para atividade pratica",
-  "schema": {
-    "id": "Identificador unico do chamado",
-    "descricao": "Descricao textual do chamado",
-    "classe": "Categoria do chamado: comum ou urgente"
+  "dataset_id": "chamados-v2",
+  "origem": "Exemplos sintéticos criados para a Atividade Prática 04",
+  "arquivos": ["data/chamados.csv.dvc", "data/split.csv.dvc"],
+  "esquema": {
+    "id": "texto único",
+    "texto": "descrição",
+    "classe": ["comum", "urgente"]
   },
-  "regra_rotulagem": "Chamados que impedem acesso ou comprometem servicos essenciais devem ser classificados como urgentes.",
-  "observacao": "O chamado 006 foi mantido intencionalmente com rotulo incorreto para permitir avaliar o impacto de uma correcao."
+  "regra_de_rotulagem": "Queda, falha crítica e bloqueio são urgentes. Cadastro e dúvida são comuns.",
+  "alteracao": "Rótulo do ID 006 corrigido de comum para urgente."
 }

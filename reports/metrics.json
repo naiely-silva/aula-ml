@@ -1,17 +1,17 @@
 {
-  "acuracia": 0.75,
-  "dataset_id": "chamados-v1",
-  "model_id": "chamados-r1",
+  "acuracia": 1.0,
+  "dataset_id": "chamados-v2",
+  "model_id": "chamados-r2",
   "por_classe": {
     "comum": {
       "recall": 1.0,
       "suporte": 2
     },
     "urgente": {
-      "recall": 0.5,
+      "recall": 1.0,
       "suporte": 2
     }
   },
   "protocolo": "Avaliação em partição de teste fixa",
-  "split_sha256": "a543f066e63278bf40d73dcb0cf6b523f949fdeeb2469155c008a9416d0c10f2"
+  "split_sha256": "d5007d67b4b969f16e268c00c6c1fc90ee452d1b5646410be6ae0c229c4d43dd"
 }
